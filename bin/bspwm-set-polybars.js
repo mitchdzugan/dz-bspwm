@@ -5,14 +5,17 @@ import { getState } from '../lib/bspc.js';
 
 const appIcons = {
     "firefox": "",
+    "Gimp-2.10": "",
     "Slippi Launcher": "",
     ".slippi-netplay-wrapped": "",
     "obs": "",
     "Code": "󰨞",
     "kitty": "",
+    "Alacritty": "",
     "discord": "󰙯",
     "Thunar": "",
     "neovide": "",
+    "glrnvim": "",
     "vlc": "󰕼"
 };
 
@@ -25,7 +28,9 @@ const getAppIcon = (
 const wrapAction = (cmd) => (str) => !cmd ? str : `%{A1:${cmd}:}${str}%{A}`;
 const wrapFore = (clr) => (str) => !clr ? str : `%{F${clr}}${str}%{F-}`;
 const wrapBack = (clr) => (str) => !clr ? str : `%{B${clr}}${str}%{B-}`;
+const wrapOver  = (clr) => (str) => !clr ? str : `%{o${clr}}%{+o}${str}%{-o}`;
 const wrapUnder = (clr) => (str) => !clr ? str : `%{u${clr}}%{+u}${str}%{-u}`;
+const wrapBoth = (clr) => (str) => wrapUnder(clr)(wrapOver(clr)(str));
 
 const getPolybarMonitors = () => new Promise((fin, err) => {
     let monitorsStr = "";
@@ -70,19 +75,24 @@ const main = async () => {
     const payloads = polybarMonitors.map(() => "");
     for (let i=1; i<=10; i++) {
         const desktop = desktopsByName[i];
-        if (!desktop || desktop.name === 'hidden') { continue }
+        if (!desktop || desktop.isHidden) { continue }
         if (!(desktop.hasClient || desktop.isActive)) { continue; }
-        let desktopString = `${i}) `;
+        let desktopString = "";
+        let hasClient = false;
         const processNode = (node) => {
             if (!node) { return; }
             processNode(node.firstChild);
             if (node.client) {
-                desktopString += getAppIcon(node.client) + " ";
+                hasClient = true;
+                const fore = node.client.isFocused ? '#ffffff' : '#aaffffff';
+                const appIcon = getAppIcon(node.client);
+                desktopString += wrapFore(fore)(appIcon) + " ";
             }
             processNode(node.secondChild);
         };
         processNode(desktop.root);
-        desktopString = " " + desktopString.trim() + " ";
+        desktopString = `${i}` + (hasClient ? `${desktopString.trim()}` : '');
+        desktopString = " " + desktopString + " ";
         polybarMonitors.forEach((monitorName, monitorInd) => {
             const isThis = desktop.monitorName === monitorName;
             const action = `bspwm-focus-desktop.js ${i}`;
@@ -92,7 +102,7 @@ const main = async () => {
                 isThis ? '#c4a7e7' : '#6e6a86'
             );
             const monitorString = wrapAction(action)(
-                wrapBack(back)(wrapFore(fore)(wrapUnder(under)(desktopString)))
+                wrapBack(back)(wrapFore(fore)(wrapBoth(under)(desktopString)))
             );
             payloads[monitorInd] += monitorString + " ";
         });

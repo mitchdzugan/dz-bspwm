@@ -1,10 +1,6 @@
 #!/usr/bin/env node
 
-import { bspc, getState } from '../lib/bspc.js';
-
-const names = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-const validNames = { hidden: true };
-names.forEach((name) => { validNames[name] = true; })
+import { bspc, getState, legalDesktops } from '../lib/bspc.js';
 
 const main = async () => {
     const { 
@@ -26,7 +22,7 @@ const main = async () => {
         if (!isWired) {
             await bspc('desktop', desktopName, '-m', lastWiredMonitorId);
         }
-        const isValid = !!validNames[desktopName];
+        const isValid = !!legalDesktops[desktopName];
         const finalName = isValid ? desktopName : getNextName();
         taken[finalName] = true;
         if (!isValid) {
@@ -35,7 +31,7 @@ const main = async () => {
     }
     for (const monitor of wiredMonitors) {
         const desktops = monitor.desktops || [{ name: 'hidden' }];
-        if (desktops.length === 1 && desktops[0].name === 'hidden') {
+        if (desktops.length === 1 && desktops[0].isHidden) {
             const newDesktop = getNextName();
             await bspc('monitor', lastWiredMonitorId, '-a', newDesktop);
             await bspc('desktop', '-a', newDesktop);
